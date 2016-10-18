@@ -123,6 +123,11 @@ def utf_translate(in_string):
 
 #generateCSV using all of the info above
 def getCSV():
+	try:
+    	os.remove(destinationFile)
+	except OSError:
+		print (Something went wrong!)
+    pass
 	return
 ######################################################
 
