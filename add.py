@@ -3,11 +3,14 @@
 
 import os
 import re
+import csv
+import sys
 from wordpress_xmlrpc import Client, WordPressPost
 from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts
 
 artistPath = '/Users/myang/Sync/Artists'
+destinationFile = '/Users/myang/Sync/test.csv'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
@@ -24,16 +27,26 @@ def check(artist,album):
 
 #Returns a list of paths to files with extensions as defined in ext
 #Also disregards any temp files created by Mac OS which should technically be hidden
-def getArtistList(rootdir):
+def getArtistList():
+	rootdir = artistPath
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 def getAlbumList(artist):
 	rootdir = os.path.join(artistPath,artist,'Albums')
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
+def getSongList(artist, album):
+	rootdir = os.path.join(artistPath,artist,'Albums',album)
+	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+
 #albumType should be 'single' or 'full'
 #postType should be 'single' or 'bundle'
-def getSlug(albumType, postType, artist, album):
+def getSlug(postType, artist, album):
+	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
+	if 'single' in open(infoPath).read():
+		albumType = 'single'
+	else:
+		albumType = 'full'
 	if postType == 'single':
 		prefix = albumType
 	else:
@@ -44,28 +57,25 @@ def getSlug(albumType, postType, artist, album):
 #YES: return url to image
 #NO: Upload image, return url to image
 def getArtwork(artist, album):
-	filePath = os.path.join(artistPath,artist,'Albums','cover.jpg')
+	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = artist + ' - ' + album
-	'''
 	for media in mediaLibrary:
-		if (media.name() == name):
-			return media.url()
-	'''
+		if (utf_translate(media.title) == name):
+			print ('Image for ' + name + ' already exists')
+			return media.link
 	data = {
 		'name': artist + ' - ' + album,
 		'type': 'image/jpeg',  # mimetype
 	}
-	#with open(filePath, 'rb') as img:
-		#pass
-		#data['bits'] = xmlrpc_client.Binary(img.read())
-	#response = client.call(media.UploadFile(data))
-	return data['name']
-	#return response['url']
+	with open(imagePath, 'rb') as img:
+		data['bits'] = xmlrpc_client.Binary(img.read())
+	response = wp.call(media.UploadFile(data))
+	return response['url']
 
 #Combines two text files to make an html with formatting
-def getDescription(artist, album):
-	lyricsPath = os.path.join(artistPath,artist,'Albums',album,'lyrics.txt')
-	translationPath = os.path.join(artistPath,artist,'Albums',album,'translation.txt')
+def getTranslation(artist, album, song):
+	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
+	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
 	with open(lyricsPath, 'rb') as lyrics:
 		pass
 	with open(translationPath, 'rb') as translation:
@@ -124,30 +134,46 @@ def utf_translate(in_string):
 #generateCSV using all of the info above
 def getCSV():
 	try:
-    	os.remove(destinationFile)
+		os.remove(destinationFile)
+		print('File removed!')
 	except OSError:
-		print (Something went wrong!)
-    pass
+		print ('File doesn\'t exist!')
+	f = open(destinationFile, 'wt')
+	try:
+		writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
+		writer.writerow( ('Title 1', 'Title 2', 'Title 3') )
+		for i in range(10):
+			writer.writerow( (i+1, chr(ord('a') + i), '08/%02d/07' % (i+1)) )
+	finally:
+		f.close()
+
 	return
 ######################################################
 
-artistList = getArtistList(artistPath)
+artistList = getArtistList()
 for artist in artistList:
-	print (artist)
+	print ('Artist Name: ' + artist + '\n')
 	albumList = getAlbumList(artist)
 	for album in albumList:
-		print (getSlug('single','bundle',artist,album))
+		print ('Album Name: ' + album)
+		print (getSlug('bundle',artist,album))
 		print (getArtwork(artist,album))
-		print (getDescription(artist,album))
+		songList = getSongList(artist, album)
+		for song in songList:
+			print ('Album Name: ' + album)
+			print (getSlug('single',artist,album))
+			print (getArtwork(artist,album))
+			print (getTranslation(artist,album,song))
 
 print ('This is it for the artists')
-
+'''
 for media in mediaLibrary:
 	print (media.id)
 	print (len(media.title))
 	print (utf_translate(media.title))
 
-
+getCSV()
+'''
 '''		1. create a csv that only contains default fields supported by EDD
 		2. create another script that goes through all these shit to set piklist fields?
 		mysql
