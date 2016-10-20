@@ -10,10 +10,10 @@ from wordpress_xmlrpc import Client, WordPressPost
 from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts
 
-#artistPath = '/Users/myang/Sync/Artists'
-artistPath = 'C:\\Users\\Michael\\Sync\\Artists'
-#destinationFile = '/Users/myang/Sync/test.csv'
-destinationFile = 'C:\\Users\\Michael\\Sync\\test.csv'
+artistPath = '/Users/myang/Sync/Artists'
+#artistPath = 'C:\\Users\\Michael\\Sync\\Artists'
+destinationFile = '/Users/myang/Sync/test.csv'
+#destinationFile = 'C:\\Users\\Michael\\Sync\\test.csv'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
@@ -60,8 +60,9 @@ def getSlug(postType, artist, album):
 def getArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
+	print (name)
 	for item in mediaLibrary:
-		if (item.title == name):
+		if (item.title.encode('utf-8') == name):
 			print ('Image for ' + name + ' already exists')
 			return item.link
 	data = {
@@ -79,27 +80,12 @@ def getLyricsTranslation(artist, album, song):
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
-		print(lyrics.read())
-	with open(translationPath, 'r') as translation:
-		print(translation.read())
+		content = content + lyrics.read()
+	content = content + '</div><div class="right" style="text-align: center; font-size: 14px;">'
+	with codecs.open(translationPath, encoding='utf-8') as translation:
+		content = content + translation.read()
+	content = content + '</div>&nbsp;'
 	return content
-	'''
-	&nbsp;	
-	<div class="left" style="text-align: center; font-family: 'Nanum Gothic'; font-size: 13px;">
-	<center><b>
-	#korean artist - korean title
-	</b></center>
-	#lyrics
-	</div>
-	<div class="right" style="text-align: center; font-size: 14px;">
-	<center><b>
-	#english artist - english title
-	</b></center>
-	#translation
-	</div>
-	&nbsp;
-	'''
-	return
 
 def utf_translate(in_string):
     in_string = in_string.encode('utf-8').decode('utf-8')
