@@ -18,28 +18,26 @@ wp_password = 'Mxbi9gf8n'
 wp = Client(wp_url,wp_username,wp_password)
 mediaLibrary = wp.call(media.GetMediaLibrary({}))
 
-#mediaLibrary = client.methods.media.GetMediaLibrary()
-#wp.call(media.GetMediaLibrary())
-#Needs to be a check/document that records which artist+album has already been added
-#Perhaps a csv or something
+#Connect to mysql
 def check(artist,album):
 	return true
 
-#Returns a list of paths to files with extensions as defined in ext
-#Also disregards any temp files created by Mac OS which should technically be hidden
+#Returns: [List] List of artists in Sync path
 def getArtistList():
 	rootdir = artistPath
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
+#Returns: [List] List of albums for a given artist
 def getAlbumList(artist):
 	rootdir = os.path.join(artistPath,artist,'Albums')
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
+#Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
 	rootdir = os.path.join(artistPath,artist,'Albums',album)
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
-#albumType should be 'single' or 'full'
+#Returns: [String] Slug
 #postType should be 'single' or 'bundle'
 def getSlug(postType, artist, album):
 	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
@@ -73,12 +71,15 @@ def getArtwork(artist, album):
 	return response['url']
 
 #Combines two text files to make an html with formatting
-def getTranslation(artist, album, song):
+def getLyricsTranslation(artist, album, song):
+	content = '&nbsp;div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
 	with open(lyricsPath, 'rb') as lyrics:
+		#add content
 		pass
 	with open(translationPath, 'rb') as translation:
+		#add content
 		pass
 	'''
 	&nbsp;	
@@ -99,9 +100,6 @@ def getTranslation(artist, album, song):
 	return
 
 def utf_translate(in_string):
-    ''' Gets rid of the BAD GUYS. AKA non-ASCII utf-8 characters. Or at least it tries to.
-    Danaanananananananaa BATMAN.
-    '''
     in_string = in_string.encode('utf-8').decode('utf-8')
     #print in_string
     common_bad_guys={u'—':u'-',#MDASH
@@ -163,7 +161,7 @@ for artist in artistList:
 			print ('Album Name: ' + album)
 			print (getSlug('single',artist,album))
 			print (getArtwork(artist,album))
-			print (getTranslation(artist,album,song))
+			print (getLyricsTranslation(artist,album,song))
 
 print ('This is it for the artists')
 '''
