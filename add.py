@@ -5,12 +5,15 @@ import os
 import re
 import csv
 import sys
+import codecs
 from wordpress_xmlrpc import Client, WordPressPost
 from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts
 
-artistPath = '/Users/myang/Sync/Artists'
-destinationFile = '/Users/myang/Sync/test.csv'
+#artistPath = '/Users/myang/Sync/Artists'
+artistPath = 'C:\\Users\\Michael\\Sync\\Artists'
+#destinationFile = '/Users/myang/Sync/test.csv'
+destinationFile = 'C:\\Users\\Michael\\Sync\\test.csv'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
@@ -56,15 +59,15 @@ def getSlug(postType, artist, album):
 #NO: Upload image, return url to image
 def getArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
-	name = artist + ' - ' + album
-	for media in mediaLibrary:
-		if (utf_translate(media.title) == name):
+	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
+	for item in mediaLibrary:
+		if (item.title == name):
 			print ('Image for ' + name + ' already exists')
-			return media.link
+			return item.link
 	data = {
-		'name': artist + ' - ' + album,
-		'type': 'image/jpeg',  # mimetype
-	}
+			'name': name,
+			'type': 'image/jpeg'
+			}
 	with open(imagePath, 'rb') as img:
 		data['bits'] = xmlrpc_client.Binary(img.read())
 	response = wp.call(media.UploadFile(data))
@@ -75,12 +78,11 @@ def getLyricsTranslation(artist, album, song):
 	content = '&nbsp;div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
-	with open(lyricsPath, 'rb') as lyrics:
-		#add content
-		pass
-	with open(translationPath, 'rb') as translation:
-		#add content
-		pass
+	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
+		print(lyrics.read())
+	with open(translationPath, 'r') as translation:
+		print(translation.read())
+	return content
 	'''
 	&nbsp;	
 	<div class="left" style="text-align: center; font-family: 'Nanum Gothic'; font-size: 13px;">
@@ -182,4 +184,5 @@ getCSV()
 		6. ????
 		7. profit
 		'''
+
 
