@@ -135,7 +135,26 @@ def getCSV():
 
 	return
 ######################################################
+wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':10}))
+for post in wpPosts:
+	if (post.id == '1566'):
+		print (post.id)
+		print (post.user)
+		print (post.date)
+		print (post.title)
+		post.title = 'test'
+		print (post.title)
+		print (utf_translate(post.content))
+		print (utf_translate(post.excerpt))
+		print (post.link)
+		for term in post.terms:
+			print (term.name)
+		for custom_field in post.custom_fields:
+			print custom_field
+		wp.call(posts.EditPost('1566',post))
 
+
+'''
 artistList = getArtistList()
 for artist in artistList:
 	print ('Artist Name: ' + artist + '\n')
@@ -152,6 +171,9 @@ for artist in artistList:
 			print (getLyricsTranslation(artist,album,song))
 
 print ('This is it for the artists')
+'''
+
+
 '''
 for media in mediaLibrary:
 	print (media.id)
