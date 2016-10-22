@@ -134,7 +134,9 @@ def getCSV():
 		f.close()
 
 	return
+
 ######################################################
+
 wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':10}))
 for post in wpPosts:
 	if (post.id == '1566'):
