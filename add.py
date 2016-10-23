@@ -6,24 +6,20 @@ import re
 import csv
 import sys
 import codecs
+import platform
+import datetime
 from wordpress_xmlrpc import Client, WordPressPost
 from wordpress_xmlrpc.compat import xmlrpc_client
-from wordpress_xmlrpc.methods import media, posts
+from wordpress_xmlrpc.methods import media, posts, taxonomies
 
-artistPath = '/Users/myang/Sync/Artists'
-#artistPath = 'C:\\Users\\Michael\\Sync\\Artists'
-destinationFile = '/Users/myang/Sync/test.csv'
-#destinationFile = 'C:\\Users\\Michael\\Sync\\test.csv'
+if (platform.system() == 'Windows'):
+	artistPath = 'C:\\Users\\Michael\\Sync\\Artists'
+else:
+	artistPath = '/Users/myang/Sync/Artists'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
-
 wp = Client(wp_url,wp_username,wp_password)
-mediaLibrary = wp.call(media.GetMediaLibrary({}))
-
-#Connect to mysql
-def check(artist,album):
-	return true
 
 #Returns: [List] List of artists in Sync path
 def getArtistList():
@@ -40,19 +36,32 @@ def getSongList(artist, album):
 	rootdir = os.path.join(artistPath,artist,'Albums',album)
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
+def getPostSlugList():
+	postSlugList = []
+	offset = 0
+	increment = 20
+	while True:
+		postList = wp.call(posts.GetPosts({'post_type': 'download','number': increment, 'offset': offset}))
+		if len(postList) == 0:
+			break
+		for post in postList:
+			postSlugList.append(post.slug)
+		offset = offset + increment
+	return postSlugList
+
 #Returns: [String] Slug
 #postType should be 'single' or 'bundle'
-def getSlug(postType, artist, album):
-	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
-	if 'single' in open(infoPath).read():
-		albumType = 'single'
-	else:
-		albumType = 'full'
+def getSlug(postType, albumType, artist, album, song):
 	if postType == 'single':
-		prefix = albumType
+		return (albumType + '-' + re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',song)).replace(' ','-').lower()
 	else:
-		prefix = albumType + '-album'
-	return (prefix + '-' + re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-').lower()
+		return (albumType + '-album' + '-' + re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-').lower()
+
+def getInfo(artist, album):
+	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
+	albumType = f.readline()
+	releaseDate = f.readline()
+	return albumType, releaseDate
 
 #Check if media is already uploaded on WP
 #YES: return url to image
@@ -60,11 +69,11 @@ def getSlug(postType, artist, album):
 def getArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
-	print (name)
+	mediaLibrary = wp.call(media.GetMediaLibrary({}))
 	for item in mediaLibrary:
-		if (item.title.encode('utf-8') == name):
+		if (utf_translate(item.title) == name):
 			print ('Image for ' + name + ' already exists')
-			return item.link
+			return item.id
 	data = {
 			'name': name,
 			'type': 'image/jpeg'
@@ -72,10 +81,10 @@ def getArtwork(artist, album):
 	with open(imagePath, 'rb') as img:
 		data['bits'] = xmlrpc_client.Binary(img.read())
 	response = wp.call(media.UploadFile(data))
-	return response['url']
+	return response['id']
 
 #Combines two text files to make an html with formatting
-def getLyricsTranslation(artist, album, song):
+def getContent(artist, album, song):
 	content = '&nbsp;div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
@@ -117,73 +126,58 @@ def utf_translate(in_string):
         in_string = in_string.replace(key,common_bad_guys[key])
     return in_string
 
-#generateCSV using all of the info above
-def getCSV():
-	try:
-		os.remove(destinationFile)
-		print('File removed!')
-	except OSError:
-		print ('File doesn\'t exist!')
-	f = open(destinationFile, 'wt')
-	try:
-		writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
-		writer.writerow( ('Title 1', 'Title 2', 'Title 3') )
-		for i in range(10):
-			writer.writerow( (i+1, chr(ord('a') + i), '08/%02d/07' % (i+1)) )
-	finally:
-		f.close()
-
-	return
-
-######################################################
-
-wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':10}))
+def uploadPost(postType, artist, album, song):
+	albumType, releaseDate = getInfo(artist,album)
+	post = WordPressPost()
+	post.post_type = 'download'
+	if postType == 'bundle':
+		post.title = album
+	else:
+		post.title = song
+		post.content = getContent(artist, album, song)
+	post.date = datetime.datetime.strptime(releaseDate, '%Y.%m.%d')
+	post.slug = getSlug(postType, albumType, artist, album, song)
+	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
+	post.custom_fields = []
+	post.custom_fields.append({
+	        'key': 'year',
+	        'value': releaseDate
+	})
+	post.id = wp.call(posts.NewPost(post))
+	print (post.id)
+'''
+wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':3}))
 for post in wpPosts:
-	if (post.id == '1566'):
-		print (post.id)
-		print (post.user)
-		print (post.date)
-		print (post.title)
-		post.title = 'test'
-		print (post.title)
-		print (utf_translate(post.content))
-		print (utf_translate(post.excerpt))
-		print (post.link)
-		for term in post.terms:
-			print (term.name)
-		for custom_field in post.custom_fields:
-			print custom_field
-		wp.call(posts.EditPost('1566',post))
-
-
+	print (post)
+	print ('id: ' + post.id)
+	print (post.slug)
+	print (post.post_status)
+	print ('title: ' + post.title)
+	print (utf_translate(post.content))
+	print (utf_translate(post.excerpt))
+	print (type(post.terms))
+	for custom_field in post.custom_fields:
+		print (custom_field)
+	print (post.thumbnail)
+	#wp.call(posts.EditPost('1566',post))
 '''
-artistList = getArtistList()
-for artist in artistList:
-	print ('Artist Name: ' + artist + '\n')
-	albumList = getAlbumList(artist)
-	for album in albumList:
-		print ('Album Name: ' + album)
-		print (getSlug('bundle',artist,album))
-		print (getArtwork(artist,album))
-		songList = getSongList(artist, album)
-		for song in songList:
-			print ('Album Name: ' + album)
-			print (getSlug('single',artist,album))
-			print (getArtwork(artist,album))
-			print (getLyricsTranslation(artist,album,song))
+def main():
+	postSlugList = getPostSlugList()
+	print(postSlugList)
+	artistList = getArtistList()
+	for artist in artistList:
+		print ('Artist Name: ' + artist + '\n')
+		albumList = getAlbumList(artist)
+		for album in albumList:
+			#uploadPost('bundle', artist, album, '')
+			songList = getSongList(artist, album)
+			for song in songList:
+				#uploadPost('single', artist, album, song)
 
-print ('This is it for the artists')
-'''
+if __name__ == "__main__":
+	main()
 
 
-'''
-for media in mediaLibrary:
-	print (media.id)
-	print (len(media.title))
-	print (utf_translate(media.title))
-
-getCSV()
-'''
 '''		1. create a csv that only contains default fields supported by EDD
 		2. create another script that goes through all these shit to set piklist fields?
 		mysql
@@ -193,6 +187,7 @@ getCSV()
 		5. use jenny to translate
 		6. ????
 		7. profit
-		'''
+'''
+
 
 
