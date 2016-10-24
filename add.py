@@ -59,8 +59,9 @@ def getSlug(postType, albumType, artist, album, song):
 
 def getInfo(artist, album):
 	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
-	albumType = f.readline()
-	releaseDate = f.readline()
+	with codecs.open(infoPath, encoding='utf-8') as info:
+		albumType = info.readline()
+		releaseDate = info.readline()
 	return albumType, releaseDate
 
 #Check if media is already uploaded on WP
@@ -163,16 +164,15 @@ for post in wpPosts:
 '''
 def main():
 	postSlugList = getPostSlugList()
-	print(postSlugList)
 	artistList = getArtistList()
 	for artist in artistList:
 		print ('Artist Name: ' + artist + '\n')
 		albumList = getAlbumList(artist)
 		for album in albumList:
-			#uploadPost('bundle', artist, album, '')
+			uploadPost('bundle', artist, album, '')
 			songList = getSongList(artist, album)
 			for song in songList:
-				#uploadPost('single', artist, album, song)
+				uploadPost('single', artist, album, song)
 
 if __name__ == "__main__":
 	main()
