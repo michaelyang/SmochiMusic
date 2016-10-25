@@ -60,9 +60,9 @@ def getSlug(postType, albumType, artist, album, song):
 def getInfo(artist, album):
 	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
 	with codecs.open(infoPath, encoding='utf-8') as info:
-		albumType = info.readline()
-		releaseDate = info.readline()
-	return albumType, releaseDate
+		albumType = info.readline().strip()
+		releaseDate = info.readline().strip()
+	return str(albumType), str(releaseDate)
 
 #Check if media is already uploaded on WP
 #YES: return url to image
@@ -86,9 +86,12 @@ def getArtwork(artist, album):
 
 #Combines two text files to make an html with formatting
 def getContent(artist, album, song):
-	content = '&nbsp;div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
+	if not os.path.exists(lyricsPath):
+		print ('Warning: No Lyrics for %s - %s') % (artist, song)
+		return ''	
+	content = '&nbsp;<div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'	
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
 	content = content + '</div><div class="right" style="text-align: center; font-size: 14px;">'
@@ -145,7 +148,11 @@ def uploadPost(postType, artist, album, song):
 	        'value': releaseDate
 	})
 	post.id = wp.call(posts.NewPost(post))
-	print (post.id)
+	if postType == 'bundle':
+		print ('Upload Successful for album %s - %s. Post id = %s') % (artist, album, post.id)
+	else:
+		print ('Upload Successful for song %s - %s. Post id = %s') % (artist, song, post.id)
+	return
 '''
 wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':3}))
 for post in wpPosts:
