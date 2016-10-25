@@ -20,6 +20,7 @@ wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
 wp = Client(wp_url,wp_username,wp_password)
+mediaLibrary = wp.call(media.GetMediaLibrary({}))
 
 #Returns: [List] List of artists in Sync path
 def getArtistList():
@@ -67,12 +68,11 @@ def getInfo(artist, album):
 #Check if media is already uploaded on WP
 #YES: return url to image
 #NO: Upload image, return url to image
-def getArtwork(artist, album):
+def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
-	mediaLibrary = wp.call(media.GetMediaLibrary({}))
 	for item in mediaLibrary:
-		if (utf_translate(item.title) == name):
+		if (item.title == name.decode('utf-8')):
 			print ('Image for ' + name + ' already exists')
 			return item.id
 	data = {
@@ -130,7 +130,7 @@ def utf_translate(in_string):
         in_string = in_string.replace(key,common_bad_guys[key])
     return in_string
 
-def uploadPost(postType, artist, album, song):
+def uploadPost(postType, artist, album, song, artwork):
 	albumType, releaseDate = getInfo(artist,album)
 	post = WordPressPost()
 	post.post_type = 'download'
@@ -142,6 +142,7 @@ def uploadPost(postType, artist, album, song):
 	post.date = datetime.datetime.strptime(releaseDate, '%Y.%m.%d')
 	post.slug = getSlug(postType, albumType, artist, album, song)
 	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
+	post.thumbnail = artwork
 	post.custom_fields = []
 	post.custom_fields.append({
 	        'key': 'year',
@@ -176,10 +177,11 @@ def main():
 		print ('Artist Name: ' + artist + '\n')
 		albumList = getAlbumList(artist)
 		for album in albumList:
-			uploadPost('bundle', artist, album, '')
+			artwork = uploadArtwork(artist, album)
+			uploadPost('bundle', artist, album, '', artwork)
 			songList = getSongList(artist, album)
 			for song in songList:
-				uploadPost('single', artist, album, song)
+				uploadPost('single', artist, album, song, artwork)
 
 if __name__ == "__main__":
 	main()
