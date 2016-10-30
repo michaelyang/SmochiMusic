@@ -72,7 +72,7 @@ def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
 	for item in mediaLibrary:
-		if (item.title == name.decode('utf-8')):
+		if (str(item.title) == name):
 			print ('Image for ' + name + ' already exists')
 			return item.id
 	data = {
@@ -89,7 +89,7 @@ def getContent(artist, album, song):
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
 	if not os.path.exists(lyricsPath):
-		print ('Warning: No Lyrics for %s - %s') % (artist, song)
+		print ('Warning: No Lyrics for %s - %s' % (artist, song))
 		return ''	
 	content = '&nbsp;<div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'	
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
@@ -140,19 +140,20 @@ def uploadPost(postType, artist, album, song, artwork):
 		post.title = song
 		post.content = getContent(artist, album, song)
 	post.date = datetime.datetime.strptime(releaseDate, '%Y.%m.%d')
-	post.slug = getSlug(postType, albumType, artist, album, song)
+	#post.slug = getSlug(postType, albumType, artist, album, song)
 	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
 	post.thumbnail = artwork
 	post.custom_fields = []
+	post.post_status = 'draft'
 	post.custom_fields.append({
 	        'key': 'year',
 	        'value': releaseDate
 	})
 	post.id = wp.call(posts.NewPost(post))
 	if postType == 'bundle':
-		print ('Upload Successful for album %s - %s. Post id = %s') % (artist, album, post.id)
+		print ('Upload Successful for album %s - %s. Post id = %s' % (artist, album, post.id))
 	else:
-		print ('Upload Successful for song %s - %s. Post id = %s') % (artist, song, post.id)
+		print ('Upload Successful for song %s - %s. Post id = %s' % (artist, song, post.id))
 	return
 '''
 wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':3}))
@@ -171,7 +172,7 @@ for post in wpPosts:
 	#wp.call(posts.EditPost('1566',post))
 '''
 def main():
-	postSlugList = getPostSlugList()
+	#postSlugList = getPostSlugList()
 	artistList = getArtistList()
 	for artist in artistList:
 		print ('Artist Name: ' + artist + '\n')
