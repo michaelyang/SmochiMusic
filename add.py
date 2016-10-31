@@ -8,6 +8,7 @@ import sys
 import codecs
 import platform
 import datetime
+import pymysql.cursors
 from wordpress_xmlrpc import Client, WordPressPost
 from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts, taxonomies
@@ -21,6 +22,12 @@ wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
 wp = Client(wp_url,wp_username,wp_password)
 mediaLibrary = wp.call(media.GetMediaLibrary({}))
+connection = pymysql.connect(host='smochimusic.com',
+                             user='smochimu_wp153',
+                             password='mxbi9gf8n',
+                             db='smochimu_wp153',
+                             charset='utf8mb4',
+                             cursorclass=pymysql.cursors.DictCursor)
 
 #Returns: [List] List of artists in Sync path
 def getArtistList():
@@ -37,6 +44,14 @@ def getSongList(artist, album):
 	rootdir = os.path.join(artistPath,artist,'Albums',album)
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
+def getCheckList():
+    with connection.cursor() as cursor:
+		# Read a single record
+        sql = 'SELECT artist, album, song FROM upload_info WHERE published = 0'
+		cursor.execute(sql)
+		result = cursor.fetchone()
+		print(result)
+	
 def getPostSlugList():
 	postSlugList = []
 	offset = 0
@@ -150,6 +165,11 @@ def uploadPost(postType, artist, album, song, artwork):
 	        'value': releaseDate
 	})
 	post.id = wp.call(posts.NewPost(post))
+	try:
+		with connection.cursor() as cursor:
+		sql = "INSERT INTO `users` (`email`, `password`) VALUES (%s, %s)"
+		cursor.execute(sql, ('webmaster@python.org', 'very-secret'))
+    connection.commit()
 	if postType == 'bundle':
 		print ('Upload Successful for album %s - %s. Post id = %s' % (artist, album, post.id))
 	else:
@@ -179,10 +199,13 @@ def main():
 		albumList = getAlbumList(artist)
 		for album in albumList:
 			artwork = uploadArtwork(artist, album)
-			uploadPost('bundle', artist, album, '', artwork)
+			#uploadPost('bundle', artist, album, '', artwork)
 			songList = getSongList(artist, album)
 			for song in songList:
-				uploadPost('single', artist, album, song, artwork)
+				pass
+				#uploadPost('single', artist, album, song, artwork)
+	finally:
+		connection.close()
 
 if __name__ == "__main__":
 	main()
