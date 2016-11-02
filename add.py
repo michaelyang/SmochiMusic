@@ -43,6 +43,12 @@ def getAlbumList(artist):
 def getSongList(artist, album):
 	rootdir = os.path.join(artistPath,artist,'Albums',album)
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+
+def getCheckList():
+    with connection.cursor() as cursor:
+        sql = 'SELECT artist, album, song FROM upload_info WHERE published = 1'
+		cursor.execute(sql)
+		return list(cursor.fetchall())
 	
 def getPostSlugList():
 	postSlugList = []
