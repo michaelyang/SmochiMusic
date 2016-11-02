@@ -49,7 +49,7 @@ def getCheckList():
 		# Read a single record
         sql = 'SELECT artist, album, song FROM upload_info WHERE published = 0'
 		cursor.execute(sql)
-		result = cursor.fetchone()
+		result = cursor.fetchall()
 		print(result)
 	
 def getPostSlugList():
