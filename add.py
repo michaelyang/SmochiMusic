@@ -32,17 +32,17 @@ connection = pymysql.connect(host='smochimusic.com',
 #Returns: [List] List of artists in Sync path
 def getArtistList():
 	rootdir = artistPath
-	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 #Returns: [List] List of albums for a given artist
 def getAlbumList(artist):
 	rootdir = os.path.join(artistPath,artist,'Albums')
-	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 #Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
 	rootdir = os.path.join(artistPath,artist,'Albums',album)
-	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 def getCheckList():
 	with connection.cursor() as cursor:
@@ -85,11 +85,7 @@ def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
 	for item in mediaLibrary:
-		if type(item.title) is unicode:
-			itemTitle = item.title.encode('utf-8')
-		else:
-			titemTitle = item.title
-		if (itemTitle == name):
+		if (ensureUtf(item.title) == name):
 			print ('Image for ' + name + ' already exists')
 			return item.id
 	data = {
@@ -109,43 +105,20 @@ def getContent(artist, album, song):
 		print ('Warning: No Lyrics for %s - %s' % (artist, song))
 		return ''	
 	content = '&nbsp;<div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'	
-	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
-		content = content + lyrics.read()
-	content = content + '</div><div class="right" style="text-align: center; font-size: 14px;">'
-	with codecs.open(translationPath, encoding='utf-8') as translation:
+	with codecs.open(lyricsPath, encoding='utf-8') as translation:
 		content = content + translation.read()
+	content = content + '</div><div class="right" style="text-align: center; font-size: 14px;">'
+	with codecs.open(translationPath, encoding='utf-8') as lyrics:
+		content = content + lyrics.read()
 	content = content + '</div>&nbsp;'
 	return content
 
-def utf_translate(in_string):
-    in_string = in_string.encode('utf-8').decode('utf-8')
-    #print in_string
-    common_bad_guys={u'—':u'-',#MDASH
-    u'"':u'"',#stupid double left quote
-    u'"':u'"',#stupid double right quote
-    u''':u"'",#stupid left quote
-    u''':u"'",#stupid right quote
-    u'–':u'-',#NDASH?
-    u'…':u'...',#ellipsis
-    u'‐':u'-',#NOT SURE
-    u'‒':u'-',#also NOT SURE
-    u'©':u'&copy;',#copyright symbol,
-    u'®':u'&reg;',#registered symbol
-    u'�':u'?',#weird ?
-    u'™':u'&#8482;',
-    u'"':u'\\\"',
-    u"'":u"\\\'",
-    u'·':u'-',
-    u'\u2019':u"'",
-    u'\u2018':u"'",
-    u"'":u"'",
-    u"'":u"'",
-    u"\u2026":u'...',
-    u'\u201d':u'"'
-    }
-    for key in common_bad_guys:
-        in_string = in_string.replace(key,common_bad_guys[key])
-    return in_string
+def ensureUtf(s):
+  try:
+      if type(s) == unicode:
+        return s.encode('utf-8', 'ignore')
+  except: 
+    return str(s)
 
 def uploadPost(postType, artist, album, song, artwork):
 	albumType, releaseDate = getInfo(artist,album)
@@ -207,7 +180,7 @@ def main():
 		for album in albumList:
 			print ('Album Name: ' + album)
 			artwork = uploadArtwork(artist, album)
-			if not any(item['item_type'] == 'bundle'.decode('utf-8') and item['artist'] == artist.decode('utf-8') and item['album'] == album.decode('utf-8') for item in checkList):
+			if not any(item['item_type'] == 'bundle' and item['artist'] == artist and item['album'] == album for item in checkList):
 				uploadPost('bundle', artist, album, '', artwork)
 			else:
 				print ('This album already exists')
@@ -215,7 +188,7 @@ def main():
 			songList = getSongList(artist, album)
 			for song in songList:
 				print ('Song Name: ' + song)
-				if not any(item['item_type'] == 'single'.decode('utf-8') and item['artist'] == artist.decode('utf-8') and item['album'] == album.decode('utf-8') and item['song'] == song.decode('utf-8') for item in checkList):
+				if not any(item['item_type'] == 'single' and item['artist'] == artist and item['album'] == album and item['song'] == song for item in checkList):
 					artwork = uploadArtwork(artist, album)
 					uploadPost('single', artist, album, song, artwork)
 				else:
