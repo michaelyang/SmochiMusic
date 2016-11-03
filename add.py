@@ -45,8 +45,8 @@ def getSongList(artist, album):
 	return [name for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 def getCheckList():
-    with connection.cursor() as cursor:
-        sql = 'SELECT artist, album, song FROM upload_info WHERE published = 1'
+	with connection.cursor() as cursor:
+		sql = 'SELECT item_type, artist, album, song FROM upload_info WHERE published = 1'
 		cursor.execute(sql)
 		return list(cursor.fetchall())
 	
@@ -85,7 +85,11 @@ def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
 	for item in mediaLibrary:
-		if (str(item.title) == name):
+		if type(item.title) is unicode:
+			itemTitle = item.title.encode('utf-8')
+		else:
+			titemTitle = item.title
+		if (itemTitle == name):
 			print ('Image for ' + name + ' already exists')
 			return item.id
 	data = {
@@ -157,17 +161,20 @@ def uploadPost(postType, artist, album, song, artwork):
 	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
 	post.thumbnail = artwork
 	post.custom_fields = []
-	post.post_status = 'draft'
+	post.post_status = 'publish'
 	post.custom_fields.append({
 	        'key': 'year',
 	        'value': releaseDate
 	})
 	post.id = wp.call(posts.NewPost(post))
-	try:
-		with connection.cursor() as cursor:
-		sql = "INSERT INTO `users` (`email`, `password`) VALUES (%s, %s)"
-		cursor.execute(sql, ('webmaster@python.org', 'very-secret'))
-    connection.commit()
+	with connection.cursor() as cursor:
+		if postType == 'bundle':
+			sql = 'INSERT INTO `upload_info` (`item_type`, `album_type`, `artist`, `album`, `post_title`, `release_date`, `thumbnail_id`, `post_id`, `published`, `updated_at`) VALUES (%s, %s, %s,%s,%s,%s,%s,%s,%s, now())'
+			cursor.execute(sql, (postType,albumType,artist,album,post.title,post.date,post.thumbnail,post.id,'1'))
+		else:
+			sql = 'INSERT INTO `upload_info` (`item_type`, `album_type`, `artist`, `album`, `song`, `post_title`, `release_date`, `thumbnail_id`, `post_id`, `published`, `updated_at`) VALUES (%s, %s, %s,%s,%s,%s,%s,%s,%s,%s, now())'
+			cursor.execute(sql, (postType,albumType,artist,album, song,post.title,post.date,post.thumbnail,post.id,'1'))
+		connection.commit()
 	if postType == 'bundle':
 		print ('Upload Successful for album %s - %s. Post id = %s' % (artist, album, post.id))
 	else:
@@ -191,19 +198,29 @@ for post in wpPosts:
 '''
 def main():
 	#postSlugList = getPostSlugList()
+	checkList = getCheckList()
 	artistList = getArtistList()
 	for artist in artistList:
-		print ('Artist Name: ' + artist + '\n')
+		print ('Artist Name: ' + artist)
+
 		albumList = getAlbumList(artist)
 		for album in albumList:
+			print ('Album Name: ' + album)
 			artwork = uploadArtwork(artist, album)
-			#uploadPost('bundle', artist, album, '', artwork)
+			if not any(item['item_type'] == 'bundle'.decode('utf-8') and item['artist'] == artist.decode('utf-8') and item['album'] == album.decode('utf-8') for item in checkList):
+				uploadPost('bundle', artist, album, '', artwork)
+			else:
+				print ('This album already exists')
+
 			songList = getSongList(artist, album)
 			for song in songList:
-				pass
-				#uploadPost('single', artist, album, song, artwork)
-	finally:
-		connection.close()
+				print ('Song Name: ' + song)
+				if not any(item['item_type'] == 'single'.decode('utf-8') and item['artist'] == artist.decode('utf-8') and item['album'] == album.decode('utf-8') and item['song'] == song.decode('utf-8') for item in checkList):
+					artwork = uploadArtwork(artist, album)
+					uploadPost('single', artist, album, song, artwork)
+				else:
+					print ('This song already exists')
+	connection.close()
 
 if __name__ == "__main__":
 	main()
