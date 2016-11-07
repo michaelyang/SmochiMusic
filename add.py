@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python3
 #-*- coding:utf-8 -*-
 
 import os
@@ -9,6 +9,7 @@ import codecs
 import platform
 import datetime
 import pymysql.cursors
+import phpserialize
 from wordpress_xmlrpc import Client, WordPressPost
 from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts, taxonomies
@@ -104,19 +105,19 @@ def getContent(artist, album, song):
 	if not os.path.exists(lyricsPath):
 		print ('Warning: No Lyrics for %s - %s' % (artist, song))
 		return ''	
-	content = '&nbsp;<div class="left" style="text-align: center; font-family: "Nanum Gothic"; font-size: 13px;">'	
-	with codecs.open(lyricsPath, encoding='utf-8') as translation:
-		content = content + translation.read()
-	content = content + '</div><div class="right" style="text-align: center; font-size: 14px;">'
-	with codecs.open(translationPath, encoding='utf-8') as lyrics:
+	content = '&nbsp;<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left">'	
+	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
+	content = content + '</div><div style="text-align: center; 14px;" class="right">'
+	with codecs.open(translationPath, encoding='utf-8') as translation:
+		content = content + translation.read()
 	content = content + '</div>&nbsp;'
 	return content
 
 def ensureUtf(s):
   try:
       if type(s) == unicode:
-        return s.encode('utf-8', 'ignore')
+        return s.encode('utf-8')
   except: 
     return str(s)
 
@@ -134,10 +135,14 @@ def uploadPost(postType, artist, album, song, artwork):
 	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
 	post.thumbnail = artwork
 	post.custom_fields = []
-	post.post_status = 'publish'
+	post.post_status = 'draft'
 	post.custom_fields.append({
 	        'key': 'year',
 	        'value': releaseDate
+	})
+	post.custom_fields.append({
+	        'key': 'music_type',
+	        'value': postType
 	})
 	post.id = wp.call(posts.NewPost(post))
 	with connection.cursor() as cursor:
@@ -152,27 +157,14 @@ def uploadPost(postType, artist, album, song, artwork):
 		print ('Upload Successful for album %s - %s. Post id = %s' % (artist, album, post.id))
 	else:
 		print ('Upload Successful for song %s - %s. Post id = %s' % (artist, song, post.id))
-	return
-'''
-wpPosts = wp.call(posts.GetPosts({'post_type': 'download','number':3}))
-for post in wpPosts:
-	print (post)
-	print ('id: ' + post.id)
-	print (post.slug)
-	print (post.post_status)
-	print ('title: ' + post.title)
-	print (utf_translate(post.content))
-	print (utf_translate(post.excerpt))
-	print (type(post.terms))
-	for custom_field in post.custom_fields:
-		print (custom_field)
-	print (post.thumbnail)
-	#wp.call(posts.EditPost('1566',post))
-'''
+	return post.id
+
 def main():
 	#postSlugList = getPostSlugList()
 	checkList = getCheckList()
 	artistList = getArtistList()
+	albumArray = ['']
+	albumSerialized = phpserialize.BytesIO()
 	for artist in artistList:
 		print ('Artist Name: ' + artist)
 
@@ -180,8 +172,11 @@ def main():
 		for album in albumList:
 			print ('Album Name: ' + album)
 			artwork = uploadArtwork(artist, album)
+			albumArray = []
+			albumSerialized = phpserialize.BytesIO()
+
 			if not any(item['item_type'] == 'bundle' and item['artist'] == artist and item['album'] == album for item in checkList):
-				uploadPost('bundle', artist, album, '', artwork)
+				albumId = uploadPost('bundle', artist, album, '', artwork)
 			else:
 				print ('This album already exists')
 
@@ -190,9 +185,21 @@ def main():
 				print ('Song Name: ' + song)
 				if not any(item['item_type'] == 'single' and item['artist'] == artist and item['album'] == album and item['song'] == song for item in checkList):
 					artwork = uploadArtwork(artist, album)
-					uploadPost('single', artist, album, song, artwork)
+					songId = uploadPost('single', artist, album, song, artwork)
+					albumArray.append(songId)
 				else:
 					print ('This song already exists')
+
+			phpserialize.dump(albumArray, albumSerialized)
+			try:
+				with connection.cursor() as cursor:
+					sql1 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_product_type", "bundle")'
+					sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s)'
+					cursor.execute(sql1, (albumId))
+					cursor.execute(sql2, (albumId, albumSerialized.getvalue()))
+					connection.commit()
+			except:
+				print('LUL')
 	connection.close()
 
 if __name__ == "__main__":
