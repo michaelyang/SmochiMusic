@@ -37,8 +37,9 @@ def getArtistList():
 
 #Returns: [List] List of albums for a given artist
 def getAlbumList(artist):
-	rootdir = os.path.join(artistPath,artist,'Albums')
-	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+#	rootdir = os.path.join(artistPath,artist,'Albums')
+#	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+	return ['CC (Campus Couple)']
 
 #Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
@@ -50,27 +51,6 @@ def getCheckList():
 		sql = 'SELECT item_type, artist, album, song FROM upload_info WHERE published = 1'
 		cursor.execute(sql)
 		return list(cursor.fetchall())
-	
-def getPostSlugList():
-	postSlugList = []
-	offset = 0
-	increment = 20
-	while True:
-		postList = wp.call(posts.GetPosts({'post_type': 'download','number': increment, 'offset': offset}))
-		if len(postList) == 0:
-			break
-		for post in postList:
-			postSlugList.append(post.slug)
-		offset = offset + increment
-	return postSlugList
-
-#Returns: [String] Slug
-#postType should be 'single' or 'bundle'
-def getSlug(postType, albumType, artist, album, song):
-	if postType == 'single':
-		return (albumType + '-' + re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',song)).replace(' ','-').lower()
-	else:
-		return (albumType + '-album' + '-' + re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-').lower()
 
 def getInfo(artist, album):
 	infoPath = os.path.join(artistPath,artist,'Albums',album,'info.txt')
@@ -100,19 +80,26 @@ def uploadArtwork(artist, album):
 
 #Combines two text files to make an html with formatting
 def getContent(artist, album, song):
+	namePath = os.path.join(artistPath,artist,'Albums',album,song,'name.txt')
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
+	if not os.path.exists(namePath):
+		print ('Warning: No Name for %s - %s' % (artist, song))
+		return ''
 	if not os.path.exists(lyricsPath):
 		print ('Warning: No Lyrics for %s - %s' % (artist, song))
-		return ''	
-	content = '&nbsp;<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left">'	
+		return ''
+	with codecs.open(namePath, encoding='utf-8') as names:
+		koreanName = names.readline().strip()
+		englishName = names.readline().strip()
+	content = '&nbsp;<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left"><h1>'+ koreanName + '</h1></br>'
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
-	content = content + '</div><div style="text-align: center; 14px;" class="right">'
+	content = content + '</div><div style="text-align: center; 14px;" class="right"><h1>'+ englishName + '</h1></br>'
 	with codecs.open(translationPath, encoding='utf-8') as translation:
 		content = content + translation.read()
-	content = content + '</div>&nbsp;'
-	return content
+	content = content + '</div>'
+	return content, koreanName
 
 def ensureUtf(s):
   try:
@@ -129,10 +116,9 @@ def uploadPost(postType, artist, album, song, artwork):
 		post.title = album
 	else:
 		post.title = song
-		post.content = getContent(artist, album, song)
+		post.content, keyword = getContent(artist, album, song)
 	post.date = datetime.datetime.strptime(releaseDate, '%Y.%m.%d')
 	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
-	print(post.terms)
 	post.thumbnail = artwork
 	post.custom_fields = []
 	post.post_status = 'publish'
@@ -150,8 +136,12 @@ def uploadPost(postType, artist, album, song, artwork):
 			sql = 'INSERT INTO `upload_info` (`item_type`, `album_type`, `artist`, `album`, `post_title`, `release_date`, `thumbnail_id`, `post_id`, `published`, `updated_at`) VALUES (%s, %s, %s,%s,%s,%s,%s,%s,%s, now())'
 			cursor.execute(sql, (postType,albumType,artist,album,post.title,post.date,post.thumbnail,post.id,'1'))
 		else:
-			sql = 'INSERT INTO `upload_info` (`item_type`, `album_type`, `artist`, `album`, `song`, `post_title`, `release_date`, `thumbnail_id`, `post_id`, `published`, `updated_at`) VALUES (%s, %s, %s,%s,%s,%s,%s,%s,%s,%s, now())'
-			cursor.execute(sql, (postType,albumType,artist,album, song,post.title,post.date,post.thumbnail,post.id,'1'))
+			sql1 = 'INSERT INTO `upload_info` (`item_type`, `album_type`, `artist`, `album`, `song`, `post_title`, `release_date`, `thumbnail_id`, `post_id`, `published`, `updated_at`) VALUES (%s, %s, %s,%s,%s,%s,%s,%s,%s,%s, now())'
+			sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_yoast_wpseo_focuskw_text_input", %s)'
+			sql3 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_yoast_wpseo_focuskw", %s)'
+			cursor.execute(sql1, (postType,albumType,artist,album, song,post.title,post.date,post.thumbnail,post.id,'1'))
+			cursor.execute(sql2, (post.id, keyword))
+			cursor.execute(sql3, (post.id, keyword))
 		connection.commit()
 	if postType == 'bundle':
 		print ('Upload Successful for album %s - %s. Post id = %s' % (artist, album, post.id))
