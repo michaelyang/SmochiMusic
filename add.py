@@ -131,11 +131,11 @@ def uploadPost(postType, artist, album, song, artwork):
 		post.title = song
 		post.content = getContent(artist, album, song)
 	post.date = datetime.datetime.strptime(releaseDate, '%Y.%m.%d')
-	#post.slug = getSlug(postType, albumType, artist, album, song)
 	post.terms = wp.call(taxonomies.GetTerms('download_artist', {'search' : artist}))
+	print(post.terms)
 	post.thumbnail = artwork
 	post.custom_fields = []
-	post.post_status = 'draft'
+	post.post_status = 'publish'
 	post.custom_fields.append({
 	        'key': 'year',
 	        'value': releaseDate
