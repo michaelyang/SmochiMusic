@@ -92,13 +92,13 @@ def getContent(artist, album, song):
 	with codecs.open(namePath, encoding='utf-8') as names:
 		koreanName = names.readline().strip()
 		englishName = names.readline().strip()
-	content = '&nbsp;<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left"><h1>'+ koreanName + '</h1></br>'
+	content = '<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left"><h2 style = "margin: 0px 0px 20px">'+ koreanName + '</h2><pre style = "border: None;padding: 0px">'
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
-	content = content + '</div><div style="text-align: center; 14px;" class="right"><h1>'+ englishName + '</h1></br>'
+	content = content + '</pre></div><div style="text-align: center; 14px;" class="right"><h2 style = "margin: 0px 0px 20px">'+ englishName + '</h2><pre style = "border: None;padding: 0px">'
 	with codecs.open(translationPath, encoding='utf-8') as translation:
 		content = content + translation.read()
-	content = content + '</div>'
+	content = content + '</pre></div></div>'
 	return content, koreanName
 
 def ensureUtf(s):
