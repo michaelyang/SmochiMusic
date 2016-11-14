@@ -37,9 +37,8 @@ def getArtistList():
 
 #Returns: [List] List of albums for a given artist
 def getAlbumList(artist):
-#	rootdir = os.path.join(artistPath,artist,'Albums')
-#	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
-	return ['CC (Campus Couple)']
+	rootdir = os.path.join(artistPath,artist,'Albums')
+	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 #Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
@@ -85,13 +84,14 @@ def getContent(artist, album, song):
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
 	if not os.path.exists(namePath):
 		print ('Warning: No Name for %s - %s' % (artist, song))
-		return ''
+		koreanName = ''
+	else:
+		with codecs.open(namePath, encoding='utf-8') as names:
+			koreanName = names.readline().strip()
+			englishName = names.readline().strip()
 	if not os.path.exists(lyricsPath):
 		print ('Warning: No Lyrics for %s - %s' % (artist, song))
-		return ''
-	with codecs.open(namePath, encoding='utf-8') as names:
-		koreanName = names.readline().strip()
-		englishName = names.readline().strip()
+		return '', koreanName
 	content = '<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left"><h2 style = "margin: 0px 0px 20px">'+ koreanName + '</h2><pre style = "border: None;padding: 0px">'
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
@@ -156,11 +156,11 @@ def main():
 	albumArray = ['']
 	albumSerialized = phpserialize.BytesIO()
 	for artist in artistList:
-		print ('Artist Name: ' + artist)
+#		print ('Artist Name: ' + artist)
 
 		albumList = getAlbumList(artist)
 		for album in albumList:
-			print ('Album Name: ' + album)
+#			print ('Album Name: ' + album)
 			artwork = uploadArtwork(artist, album)
 			albumArray = []
 			albumSerialized = phpserialize.BytesIO()
@@ -168,28 +168,47 @@ def main():
 			if not any(item['item_type'] == 'bundle' and item['artist'] == artist and item['album'] == album for item in checkList):
 				albumId = uploadPost('bundle', artist, album, '', artwork)
 			else:
-				print ('This album already exists')
+				with connection.cursor() as cursor:
+					sql = 'SELECT post_id from `upload_info` where item_type = "bundle" and artist = %s and album = %s'
+					cursor.execute(sql, (artist, album))
+					albumId = cursor.fetchone()['post_id']
+				print ('This album already exists - ' + album)
 
 			songList = getSongList(artist, album)
 			for song in songList:
-				print ('Song Name: ' + song)
+#				print ('Song Name: ' + song)
 				if not any(item['item_type'] == 'single' and item['artist'] == artist and item['album'] == album and item['song'] == song for item in checkList):
 					artwork = uploadArtwork(artist, album)
 					songId = uploadPost('single', artist, album, song, artwork)
 					albumArray.append(songId)
 				else:
-					print ('This song already exists')
+					with connection.cursor() as cursor:
+						sql = 'SELECT post_id from `upload_info` where item_type = "single" and artist = %s and album = %s and song = %s'
+						cursor.execute(sql, (artist, album, song))
+						songId = cursor.fetchone()['post_id']
+					albumArray.append(songId)
+					print ('This song already exists -' + song)
 
 			phpserialize.dump(albumArray, albumSerialized)
 			try:
 				with connection.cursor() as cursor:
-					sql1 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_product_type", "bundle")'
-					sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s)'
+					sql1 = 'UPDATE `wp9r_postmeta` SET meta_value = "bundle" where post_id = %s and meta_key = "_edd_product_type"'
+					sql2 = 'UPDATE `wp9r_postmeta` SET meta_value = %s where post_id = %s and meta_key = "_edd_bundled_products"'
 					cursor.execute(sql1, (albumId))
-					cursor.execute(sql2, (albumId, albumSerialized.getvalue()))
+					cursor.execute(sql2, (albumSerialized.getvalue(), albumId))
 					connection.commit()
+#				print ('Updated')
 			except:
-				print('LUL')
+				print('Update didn\'t work')
+				try:
+					with connection.cursor() as cursor:
+						sql1 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_product_type", "bundle")'
+						sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s)'
+						cursor.execute(sql1, (albumId))
+						cursor.execute(sql2, (albumId, albumSerialized.getvalue()))
+						connection.commit()
+				except:
+					print('Insert didn\'t work')
 	connection.close()
 
 if __name__ == "__main__":
