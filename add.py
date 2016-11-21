@@ -38,7 +38,8 @@ def getArtistList():
 #Returns: [List] List of albums for a given artist
 def getAlbumList(artist):
 	rootdir = os.path.join(artistPath,artist,'Albums')
-	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+	return ['CC (Campus Couple)']
+#	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 #Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
@@ -92,10 +93,10 @@ def getContent(artist, album, song):
 	if not os.path.exists(lyricsPath):
 		print ('Warning: No Lyrics for %s - %s' % (artist, song))
 		return '', koreanName
-	content = '<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="left"><h2 style = "margin: 0px 0px 20px">'+ koreanName + '</h2><pre style = "border: None;padding: 0px">'
+	content = '<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="leftLyrics"><h2>'+ koreanName + '</h2><pre>'
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
-	content = content + '</pre></div><div style="text-align: center; 14px;" class="right"><h2 style = "margin: 0px 0px 20px">'+ englishName + '</h2><pre style = "border: None;padding: 0px">'
+	content = content + '</pre></div><div style="text-align: center; 14px;" class="rightLyrics"><h2>'+ englishName + '</h2><pre>'
 	with codecs.open(translationPath, encoding='utf-8') as translation:
 		content = content + translation.read()
 	content = content + '</pre></div></div>'
@@ -190,25 +191,11 @@ def main():
 					print ('This song already exists -' + song)
 
 			phpserialize.dump(albumArray, albumSerialized)
-			try:
-				with connection.cursor() as cursor:
-					sql1 = 'UPDATE `wp9r_postmeta` SET meta_value = "bundle" where post_id = %s and meta_key = "_edd_product_type"'
-					sql2 = 'UPDATE `wp9r_postmeta` SET meta_value = %s where post_id = %s and meta_key = "_edd_bundled_products"'
-					cursor.execute(sql1, (albumId))
-					cursor.execute(sql2, (albumSerialized.getvalue(), albumId))
-					connection.commit()
-#				print ('Updated')
-			except:
-				print('Update didn\'t work')
-				try:
-					with connection.cursor() as cursor:
-						sql1 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_product_type", "bundle")'
-						sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s)'
-						cursor.execute(sql1, (albumId))
-						cursor.execute(sql2, (albumId, albumSerialized.getvalue()))
-						connection.commit()
-				except:
-					print('Insert didn\'t work')
+			with connection.cursor() as cursor:
+				sql1 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_product_type", "bundle") ON DUPLICATE KEY UPDATE `meta_value` = "bundle"'
+				sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s) ON DUPLICATE KEY UPDATE `meta_value` = %s'
+				cursor.execute(sql1, (albumId))
+				cursor.execute(sql2, (albumId, albumSerialized.getvalue(), albumSerialized.getvalue()))
 	connection.close()
 
 if __name__ == "__main__":
