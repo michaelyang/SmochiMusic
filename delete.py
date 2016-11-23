@@ -27,7 +27,7 @@ connection = pymysql.connect(host='smochimusic.com',
                              cursorclass=pymysql.cursors.DictCursor)
 
 def getPostList():
-	postList = wp.call(posts.GetPosts({'post_type' : 'download'}))
+	postList = wp.call(posts.GetPosts({'post_type' : 'download', 'number':999999}))
 	return postList
 
 def main():
