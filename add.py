@@ -38,8 +38,8 @@ def getArtistList():
 #Returns: [List] List of albums for a given artist
 def getAlbumList(artist):
 	rootdir = os.path.join(artistPath,artist,'Albums')
-	return ['CC (Campus Couple)']
-#	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
+#	return ['CC (Campus Couple)']
+	return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 
 #Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
@@ -83,6 +83,8 @@ def getContent(artist, album, song):
 	namePath = os.path.join(artistPath,artist,'Albums',album,song,'name.txt')
 	lyricsPath = os.path.join(artistPath,artist,'Albums',album,song,'lyrics.txt')
 	translationPath = os.path.join(artistPath,artist,'Albums',album,song,'translation.txt')
+	lyricsLineCount = 0
+	translationLineCount = 0
 	if not os.path.exists(namePath):
 		print ('Warning: No Name for %s - %s' % (artist, song))
 		koreanName = ''
@@ -96,10 +98,14 @@ def getContent(artist, album, song):
 	content = '<div style="text-align: center;"><div style="text-align: center; "Nanum Gothic"; 13px;" class="leftLyrics"><h2>'+ koreanName + '</h2><pre>'
 	with codecs.open(lyricsPath, encoding='utf-8') as lyrics:
 		content = content + lyrics.read()
+		lyricsLineCount++
 	content = content + '</pre></div><div style="text-align: center; 14px;" class="rightLyrics"><h2>'+ englishName + '</h2><pre>'
 	with codecs.open(translationPath, encoding='utf-8') as translation:
 		content = content + translation.read()
+		translationLineCount++
 	content = content + '</pre></div></div>'
+	if (lyricsLineCount != translationLineCount):
+		print ('The line numbers don\'t match up for ' + artist + ' ' + album + ' ' + song)
 	return content, koreanName
 
 def ensureUtf(s):
@@ -196,6 +202,7 @@ def main():
 				sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s) ON DUPLICATE KEY UPDATE `meta_value` = %s'
 				cursor.execute(sql1, (albumId))
 				cursor.execute(sql2, (albumId, albumSerialized.getvalue(), albumSerialized.getvalue()))
+				connection.commit()
 	connection.close()
 
 if __name__ == "__main__":
