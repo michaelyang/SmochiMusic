@@ -16,9 +16,9 @@ from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts, taxonomies
 
 if (platform.system() == 'Windows'):
-	artistPath = 'C:\\Users\\Michael\\Sync\\Artists'
+	artistPath = 'C:\\Users\\Michael\\Dropbox\\SmochiMusic Team Folder\\Artists'
 else:
-	artistPath = '/Users/myang/Sync/Artists'
+	artistPath = '/Users/myang/Dropbox/SmochiMusic Team Folder/Artists'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
