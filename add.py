@@ -24,12 +24,6 @@ wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
 wp = Client(wp_url,wp_username,wp_password)
 mediaLibrary = wp.call(media.GetMediaLibrary({}))
-connection = pymysql.connect(host='smochimusic.com',
-                             user='smochimu_wp153',
-                             password='mxbi9gf8n',
-                             db='smochimu_wp153',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor)
 
 #Returns: [List] List of artists in Sync path
 def getArtistList():
@@ -56,7 +50,7 @@ def getSongList(artist, album):
 	else:
 		return [unicodedata.normalize('NFC', name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 		
-def getCheckList():
+def getCheckList(connection):
 	with connection.cursor() as cursor:
 		sql = 'SELECT item_type, artist, album, song FROM upload_info WHERE published = 1'
 		cursor.execute(sql)
@@ -125,7 +119,7 @@ def ensureUtf(s):
   except: 
     return str(s)
 
-def uploadPost(postType, artist, album, song, artwork):
+def uploadPost(postType, artist, album, song, artwork, connection):
 	albumType, releaseDate = getInfo(artist,album)
 	post = WordPressPost()
 	post.post_type = 'download'
@@ -159,7 +153,6 @@ def uploadPost(postType, artist, album, song, artwork):
 			cursor.execute(sql1, (postType,albumType,artist,album, song,post.title,post.date,post.thumbnail,post.id,'1'))
 			cursor.execute(sql2, (post.id, keyword))
 			cursor.execute(sql3, (post.id, keyword))
-		connection.commit()
 	if postType == 'bundle':
 		print ('Upload Successful for album %s - %s. Post id = %s' % (artist, album, post.id))
 	else:
@@ -167,11 +160,17 @@ def uploadPost(postType, artist, album, song, artwork):
 	return post.id
 
 def main():
-	#postSlugList = getPostSlugList()
-	checkList = getCheckList()
+	connection = pymysql.connect(host='smochimusic.com',
+                             user='smochimu_wp153',
+                             password='mxbi9gf8n',
+                             db='smochimu_wp153',
+                             charset='utf8mb4',
+                             cursorclass=pymysql.cursors.DictCursor)
+	checkList = getCheckList(connection)
 	artistList = getArtistList()
 	albumArray = ['']
 	albumSerialized = phpserialize.BytesIO()
+
 	for artist in artistList:
 #		print ('Artist Name: ' + artist)
 
@@ -183,7 +182,7 @@ def main():
 			albumSerialized = phpserialize.BytesIO()
 
 			if not any(item['item_type'] == 'bundle' and item['artist'] == artist and item['album'] == album for item in checkList):
-				albumId = uploadPost('bundle', artist, album, '', artwork)
+				albumId = uploadPost('bundle', artist, album, '', artwork, connection)
 			else:
 				with connection.cursor() as cursor:
 					sql = 'SELECT post_id from `upload_info` where item_type = "bundle" and artist = %s and album = %s'
@@ -196,7 +195,7 @@ def main():
 #				print ('Song Name: ' + song)
 				if not any(item['item_type'] == 'single' and item['artist'] == artist and item['album'] == album and item['song'] == song for item in checkList):
 					artwork = uploadArtwork(artist, album)
-					songId = uploadPost('single', artist, album, song, artwork)
+					songId = uploadPost('single', artist, album, song, artwork, connection)
 					albumArray.append(songId)
 				else:
 					with connection.cursor() as cursor:
@@ -212,7 +211,7 @@ def main():
 				sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s) ON DUPLICATE KEY UPDATE `meta_value` = %s'
 				cursor.execute(sql1, (albumId))
 				cursor.execute(sql2, (albumId, albumSerialized.getvalue(), albumSerialized.getvalue()))
-				connection.commit()
+	connection.commit()
 	connection.close()
 
 if __name__ == "__main__":
