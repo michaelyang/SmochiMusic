@@ -16,9 +16,9 @@ from wordpress_xmlrpc.compat import xmlrpc_client
 from wordpress_xmlrpc.methods import media, posts, taxonomies
 
 if (platform.system() == 'Windows'):
-	artistPath = 'C:\\Users\\Michael\\Dropbox\\SmochiMusic Team Folder\\Artists'
+	artistPath = 'C:\\Users\\Michael\\Dropbox\\SmochiMusic Team Folder\\Production\\Artists'
 else:
-	artistPath = '/Users/myang/Dropbox/SmochiMusic Team Folder/Artists'
+	artistPath = '/Users/myang/Dropbox/SmochiMusic Team Folder/Production/Artists'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
@@ -40,11 +40,12 @@ def getAlbumList(artist):
 		return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 	else:
 		return [unicodedata.normalize('NFC', name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
-#	return ['CC (Campus Couple)']
 
+#	return ['CC (Campus Couple)']
 #Returns: [List] List of songs for a given artist, album pair
 def getSongList(artist, album):
 	rootdir = os.path.join(artistPath,artist,'Albums',album)
+
 	if (platform.system() == 'Windows'):
 		return [ensureUtf(name) for name in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir,name))]
 	else:
@@ -211,7 +212,7 @@ def main():
 				sql2 = 'INSERT INTO `wp9r_postmeta` (`post_id`, `meta_key`, `meta_value`) VALUES (%s, "_edd_bundled_products", %s) ON DUPLICATE KEY UPDATE `meta_value` = %s'
 				cursor.execute(sql1, (albumId))
 				cursor.execute(sql2, (albumId, albumSerialized.getvalue(), albumSerialized.getvalue()))
-	connection.commit()
+		connection.commit()
 	connection.close()
 
 if __name__ == "__main__":
