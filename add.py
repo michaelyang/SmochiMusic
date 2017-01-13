@@ -217,18 +217,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
-
-'''		1. create a csv that only contains default fields supported by EDD
-		2. create another script that goes through all these shit to set piklist fields?
-		mysql
-		wp9r_postmeta <<piklistshit <<if picklist has their own shit to help us edit this less hackily
-		3. post id = object_id in wp9r_term_relationship, need to match artist id with song id (each artist is a term, use wordpress funcs to relate post to a term (aritst))
-		4. Scarper for melon << lmao
-		5. use jenny to translate
-		6. ????
-		7. profit
-'''
-
-
-
