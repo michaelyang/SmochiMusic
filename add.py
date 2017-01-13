@@ -23,7 +23,6 @@ wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
 wp_password = 'Mxbi9gf8n'
 wp = Client(wp_url,wp_username,wp_password)
-mediaLibrary = wp.call(media.GetMediaLibrary({}))
 
 #Returns: [List] List of artists in Sync path
 def getArtistList():
@@ -70,6 +69,7 @@ def getInfo(artist, album):
 def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
 	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
+	mediaLibrary = wp.call(media.GetMediaLibrary({}))
 	for item in mediaLibrary:
 		if (ensureUtf(item.title) == name):
 			print ('Image for ' + name + ' already exists')
