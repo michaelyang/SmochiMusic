@@ -195,7 +195,6 @@ def main():
 			for song in songList:
 #				print ('Song Name: ' + song)
 				if not any(item['item_type'] == 'single' and item['artist'] == artist and item['album'] == album and item['song'] == song for item in checkList):
-					artwork = uploadArtwork(artist, album)
 					songId = uploadPost('single', artist, album, song, artwork, connection)
 					albumArray.append(songId)
 				else:
