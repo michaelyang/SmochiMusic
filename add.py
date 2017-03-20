@@ -68,7 +68,7 @@ def getInfo(artist, album):
 #NO: Upload image, return url to image
 def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
-	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
+	name = (re.sub('[!|(|)|.|,|#|?|\']','',artist) + '-' + re.sub('[!|(|)|.|,|#|?\']','',album)).replace(' ','-') + '.jpg'
 	mediaLibrary = wp.call(media.GetMediaLibrary({}))
 	for item in mediaLibrary:
 		if (ensureUtf(item.title) == name):
