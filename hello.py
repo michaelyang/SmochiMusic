@@ -5,7 +5,7 @@ import sys
 from collections import Counter
 
 def main():
-	people = 4
+	people = 5
 	N = 10000
 	resultList = []
 	for i in range(N):
