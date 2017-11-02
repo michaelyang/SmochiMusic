@@ -68,7 +68,7 @@ def getInfo(artist, album):
 #NO: Upload image, return url to image
 def uploadArtwork(artist, album):
 	imagePath = os.path.join(artistPath,artist,'Albums',album,'cover.jpg')
-	name = (re.sub('[!|(|)|.|,]','',artist) + '-' + re.sub('[!|(|)|.|,]','',album)).replace(' ','-') + '.jpg'
+	name = (re.sub('[!|(|)|.|,|#|?|\']','',artist) + '-' + re.sub('[!|(|)|.|,|#|?\']','',album)).replace(' ','-') + '.jpg'
 	mediaLibrary = wp.call(media.GetMediaLibrary({}))
 	for item in mediaLibrary:
 		if (ensureUtf(item.title) == name):
@@ -195,7 +195,6 @@ def main():
 			for song in songList:
 #				print ('Song Name: ' + song)
 				if not any(item['item_type'] == 'single' and item['artist'] == artist and item['album'] == album and item['song'] == song for item in checkList):
-					artwork = uploadArtwork(artist, album)
 					songId = uploadPost('single', artist, album, song, artwork, connection)
 					albumArray.append(songId)
 				else:
