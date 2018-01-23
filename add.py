@@ -161,9 +161,10 @@ def uploadPost(postType, artist, album, song, artwork, connection):
 	return post.id
 
 def main():
+	db_password = raw_input("DB Password: ")
 	connection = pymysql.connect(host='smochimusic.com',
                              user='smochimu_wp153',
-                             password='mxbi9gf8n',
+                             password=db_password,
                              db='smochimu_wp153',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor)
