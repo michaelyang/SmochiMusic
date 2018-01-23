@@ -21,7 +21,7 @@ else:
 	artistPath = '/Users/myang/Dropbox/SmochiMusic Team Folder/Production/Artists'
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
-wp_password = 'Mxbi9gf8n'
+wp_password = raw_input("Password: ")
 wp = Client(wp_url,wp_username,wp_password)
 
 #Returns: [List] List of artists in Sync path
