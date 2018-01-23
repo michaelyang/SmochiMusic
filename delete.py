@@ -16,12 +16,13 @@ from wordpress_xmlrpc.methods import media, posts, taxonomies
 
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
-wp_password = raw_input("Password: ")
+wp_password = raw_input("WP Password: ")
 wp = Client(wp_url,wp_username,wp_password)
 mediaLibrary = wp.call(media.GetMediaLibrary({}))
+db_password = raw_input("DB Password: ")
 connection = pymysql.connect(host='smochimusic.com',
                              user='smochimu_wp153',
-                             password='mxbi9gf8n',
+                             password=db_password,
                              db='smochimu_wp153',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor)
