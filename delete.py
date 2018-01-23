@@ -16,7 +16,7 @@ from wordpress_xmlrpc.methods import media, posts, taxonomies
 
 wp_url = 'http://www.smochimusic.com/xmlrpc.php'
 wp_username = 'yangmike'
-wp_password = 'Mxbi9gf8n'
+wp_password = raw_input("Password: ")
 wp = Client(wp_url,wp_username,wp_password)
 mediaLibrary = wp.call(media.GetMediaLibrary({}))
 connection = pymysql.connect(host='smochimusic.com',
